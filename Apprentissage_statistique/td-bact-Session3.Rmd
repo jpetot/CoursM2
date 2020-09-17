@@ -1,0 +1,113 @@
+---
+title: "td3-appstats"
+author: "jp"
+date: "17 septembre 2020"
+output: html_document
+editor_options: 
+  chunk_output_type: console
+---
+
+```{r}
+install.packages("ggplot2")
+
+require(RcmdrMisc)       # For Stepwise
+require(glmnet)            # For penalized regression procedures
+require(ggplot2)
+
+```
+
+
+```{r}
+bacttrain = read.table("bacttrain.txt")
+bacttest = read.table("bacttest.txt")
+
+summary(bacttrain)
+summary(bacttest)
+
+#bacttrain$Type = as.factor(bacttrain$Type)
+#bacttest$Type = as.factor(bacttest$Type)
+
+levels(bacttrain$Type)
+levels(bacttest$Type)
+
+
+```
+
+## Question  1 
+
+la variable Type est la variable a expliqué - qualitative
+Les autres variables sont les variable explicative - toutes quantitatives
+
+## Question 2
+
+modele lineaire binomiale (glm)
+
+## Question 3
+
+```{r}
+mod_bi = glm(Type ~. , data = bacttrain, family = binomial)
+
+proba = predict(mod_bi, newdata = bacttest, type = "response")
+select = stepwise(mod_bi,direction="forward/backward",criterion="AIC", trace = FALSE)
+
+proba2 = predict(select, newdata = bacttest, type = "response")
+
+plot(proba2)
+plot(proba)
+```
+
+on peut partir d'un modele simple ou du meilleur model pour la suite de l'exo. 
+
+## Question 4 
+
+```{r}
+
+prediction = ifelse(proba2>= 0.5, "Positif", "Négatif") #debat sur le choix du seuil, on peut le faire varier et trouver un  compromis
+table(bacttest$Type, prediction)
+mean(bacttest$Type == prediction) # accuracy
+
+
+#recherche d'un meilleur seuil 
+
+vecs = seq(0.01,0.99,0.01)
+acc = rep(0, length(vecs))
+tfp = rep(0, length(vecs))
+tfn = rep(0, length(vecs))
+for (k in 1:length(vecs)){
+  prediction = ifelse(proba2>= vecs[k], "Positif", "Négatif") 
+  acc[k] = mean(bacttest$Type == prediction)
+  t = table(bacttest$Type, prediction)
+  tfp[k] = t[1,2]/(t[1,2] + t[1,1]) 
+  tfn[k] = t[2,1]/(t[2,2] + t[2,1]) 
+}
+
+plot(vecs,tfn,type="l",col="red")
+lines(vecs,tfp,col="green")
+```
+TFP = 766/(1189 + 766)
+
+TFN = 0/1529
+
+idée de demarche : toujours comparer des methodes sophistiqué a la methodes classique/de reference. Aussi pour pouvoir dire "avec ma methode sophistiquer j'ameliore la significativité de mon modele"
+
+
+## Question 5 : regression penalisé
+```{r}
+x = as.matrix(bacttrain[,-31])
+y = bacttrain[,31]
+
+loglambda = seq(10,-10,length=100) 
+
+### Fit LASSO regression for a sequence of lambda
+mod = glmnet(x,y,alpha=1,lambda=exp(loglambda), family = binomial)
+
+prob_lasso =  predict(mod, newx = as.matrix(bacttest[,-31]), type = "response")
+
+prediction_lasso = ifelse(prob_lasso>= 0.5, "Positif", "Négatif")
+
+table(bacttest$Type, prediction_lasso)
+
+
+
+```
+
