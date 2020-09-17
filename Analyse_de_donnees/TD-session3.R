@@ -37,7 +37,7 @@ f_simul = function(nind, nvar, nbsimul){
 }
 
 
-res = f_simul(41,10,20000)
+res = f_simul(6,8,200)
 mean(res)
 quantile(res, 0.95)
 sd(res)
@@ -61,8 +61,23 @@ orange <- read.table("https://husson.github.io/img/orange_chimie_senso.csv",
 dim(orange )
 summary(orange)
 
-acp_chimie = PCA(orange[,1:8])
 
-acp_desc = PCA(orange[,9:15])
+acp_chimie = PCA(orange, quanti.sup = 9:15)
+quantile(f_simul(6,8,200),0.95)
+# meilleur plan pour voir les variables de chimies
 
-acp_chimie = PCA(orange, quanti.sup = 9:15 )
+acp_desc = PCA(orange, quanti.sup = 1:8)
+quantile(f_simul(6,7,200),0.95)
+# meilleur plan pour voir les variables sensorielles
+
+#AFM permet d'analyser conjointement ce genre de données.
+
+
+################
+#### EXO 3 
+################
+
+comp <- read.table("http://factominer.free.fr/more/gene.csv",sep=";",header=T,row.names=1)
+
+dim(comp)
+summary(comp[,1:15])
