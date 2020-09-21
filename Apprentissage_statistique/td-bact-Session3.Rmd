@@ -13,19 +13,21 @@ install.packages("ggplot2")
 require(RcmdrMisc)       # For Stepwise
 require(glmnet)            # For penalized regression procedures
 require(ggplot2)
+require(groupdata2)
 
 ```
 
 
 ```{r}
+setwd("~/M2/Apprentissage_statistique")
 bacttrain = read.table("bacttrain.txt")
 bacttest = read.table("bacttest.txt")
 
 summary(bacttrain)
 summary(bacttest)
 
-#bacttrain$Type = as.factor(bacttrain$Type)
-#bacttest$Type = as.factor(bacttest$Type)
+bacttrain$Type = as.factor(bacttrain$Type)
+bacttest$Type = as.factor(bacttest$Type)
 
 levels(bacttrain$Type)
 levels(bacttest$Type)
@@ -62,7 +64,8 @@ on peut partir d'un modele simple ou du meilleur model pour la suite de l'exo.
 
 ```{r}
 
-prediction = ifelse(proba2>= 0.5, "Positif", "Négatif") #debat sur le choix du seuil, on peut le faire varier et trouver un  compromis
+prediction = ifelse(proba2>= 0.82, "Positif", "Négatif")
+#debat sur le choix du seuil, on peut le faire varier et trouver un  compromis
 table(bacttest$Type, prediction)
 mean(bacttest$Type == prediction) # accuracy
 
@@ -83,6 +86,8 @@ for (k in 1:length(vecs)){
 
 plot(vecs,tfn,type="l",col="red")
 lines(vecs,tfp,col="green")
+
+
 ```
 TFP = 766/(1189 + 766)
 
@@ -100,14 +105,70 @@ loglambda = seq(10,-10,length=100)
 
 ### Fit LASSO regression for a sequence of lambda
 mod = glmnet(x,y,alpha=1,lambda=exp(loglambda), family = binomial)
+cvmod = cv.glmnet(x,y,alpha=1,lambda=exp(loglambda), family = binomial, type.measure = "dev")
+#on peut choisir d'autre critère de selection que dev ( ex : class, AUC)
+
+### MSEP profile in ridge regression
+plot(cvmod)
 
 prob_lasso =  predict(mod, newx = as.matrix(bacttest[,-31]), type = "response")
+prob_l1 = prob_lasso[,which.min(cvmod$cvm)]
 
-prediction_lasso = ifelse(prob_lasso>= 0.5, "Positif", "Négatif")
+#on choisi la deuxieme valeurs sugéré de lambda
+prob_l2 = prob_lasso[,which.min(abs(exp(loglambda) - cvmod$lambda.1se))]
 
+
+prediction_lasso = ifelse(prob_l2>= 0.82, "Positif", "Négatif")
+
+
+#perf avec lambda 1
+prediction_lasso = ifelse(prob_l1>= 0.82, "Positif", "Négatif")
 table(bacttest$Type, prediction_lasso)
+mean(bacttest$Type == prediction_lasso) # accuracy
+
+#perf avec Lambda 2
+prediction_lasso = ifelse(prob_l2>= 0.82, "Positif", "Négatif")
+table(bacttest$Type, prediction_lasso)
+mean(bacttest$Type == prediction_lasso) # accuracy
 
 
+```
+
+
+# questiobn 6
+
+```{r}
+
+summary(mod)
+mod$beta
+
+mod$beta[,which.min(abs(exp(loglambda) - cvmod$lambda.1se))]
+
+which(abs(mod$beta[,which.min(abs(exp(loglambda) - cvmod$lambda.1se))]) > 1e-08)
+
+```
+
+# question 7 : la selection depend elle des variables choisies
+
+on fait 100 jdd, et on selectionne 100 jeu de données et on regarde quelles variables sont le plus selectionné, et si la selection est stable.
+
+```{r}
+data_bact = rbind(bacttest, bacttrain)
+dim(data_bact)
+
+segs = fold(data_bact,k=100,cat_col="Type")$".folds"
+
+
+for (k in 1:100){
+  dta = data_bact[segs!=k,]
+  x = as.matrix(dta[,-31])
+  y = dta[,31]
+  mod = glmnet(x,y,alpha=1,lambda=exp(loglambda), family = binomial)
+  cvmod = cv.glmnet(x,y,alpha=1,lambda=exp(loglambda), family = binomial, type.measure = "dev")
+  
+  which(abs(mod$beta[,which.min(abs(exp(loglambda) - cvmod$lambda.1se))]) > 1e-08)
+
+}
 
 ```
 

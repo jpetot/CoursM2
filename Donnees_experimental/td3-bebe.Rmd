@@ -1,0 +1,224 @@
+---
+title: "TD2"
+author: "jp"
+date: "18 septembre 2020"
+output: html_document
+editor_options: 
+  chunk_output_type: console
+---
+
+```{r}
+install.packages("multcomp")
+require(multcomp)
+
+setwd("~/M2/Donnees_experimental")
+
+data = read.table("ansenso.txt", header = TRUE, dec = ",")
+
+#jeu de données desequilibrer
+
+data$Produit = as.factor(data$Produit)
+data$Jour = as.factor(data$Jour)
+
+summary(data)
+head(data)
+
+```
+
+# question 1 et 2
+modele : note ~ jour * produit
+
+interaction = un produit n'est pas evalué de la même maniere en fonction du jour 
+
+effet jours et produit estimé grace la la repetition
+
+# question 3
+
+```{r }
+mod = lm(Note ~ Jour+Produit,  data = data)
+anova(mod)
+
+summary(mod)
+
+plot(data$Note, col = data$Produit)
+```
+
+
+effet jour ok (10^-11), d'effet produit, 
+pas d'effet interaction
+
+#question 4
+
+```{r}
+aggregate(data$Note, list(data$Produit), mean)
+summary(mod)
+
+```
+
+
+#question 5
+```{r}
+compar = glht(mod, linfct = mcp(Produit = "Tukey"))
+summary(compar)
+plot(compar)
+
+```
+
+difference significative entre produit 1 et 2
+non significativze pour les deux autres
+```{r}
+resi = resid(aov(Note ~ Jour+Produit, data = data))
+shapiro.test(resi)
+
+ bartlett.test(Note ~ Jour+Produit, data = data)
+```
+
+
+
+Exercice 1 TD3 
+
+```{r}
+bebe = read.table("bb.txt", header = TRUE, dec = ",", sep = "\t")
+
+
+#####
+## Exo 1
+#####
+
+
+## Q1
+names(bebe)
+boxplot(TailleBB ~ Sexe,data=bebe)
+by(bebe$TailleBB,list(bebe$Sexe),mean,na.rm=TRUE)
+options(contrasts=c("contr.sum","contr.sum"))
+
+## Q2
+modele1 <- lm(TailleBB ~ Sexe,data=bebe)
+summary(modele1)
+anova(modele1)
+
+
+## Q3
+modeleG <- lm(TailleBB ~ Nbsem,data=bebe[bebe[,"Sexe"]=="M",])
+modeleF <- lm(TailleBB ~ Nbsem,data=bebe[bebe[,"Sexe"]=="F",])
+
+plot(bebe$TailleBB ~ bebe$Nbsem,col=ifelse(bebe$Sexe=="M","blue","pink"),pch=ifelse(bebe$Sexe=="M",17,19))
+abline(coef(modeleG),col="blue",lwd=2,lty=2)
+abline(coef(modeleF),col="pink",lwd=2,lty=2)
+
+test <- lm(TailleBB ~ Nbsem*Sexe,data=bebe) ## Revient au même que faire les 2 régressions précédentes
+
+test$coefficients[1]+test$coefficients[2]+test$coefficients[3]+test$coefficients[4]
+modeleF$coefficients[1]+modeleF$coefficients[2]
+
+test$coefficients[1]+test$coefficients[2]
+modeleG$coefficients[1]+modeleG$coefficients[2]
+
+
+
+## Q4
+
+anova(test)
+
+
+## Q6 : Taille à 0 semaine: peu interprétable...il est preferable de regarder la taille initiale à 40 semaines
+bebe$Nbsem <- bebe$Nbsem-40
+modeleG <- lm(TailleBB ~ Nbsem,data=bebe[bebe[,"Sexe"]=="M",])
+modeleF <- lm(TailleBB ~ Nbsem,data=bebe[bebe[,"Sexe"]=="F",])
+summary(modeleG)
+summary(modeleF)
+
+plot(TailleBB ~ Nbsem,data=bebe[bebe[,"Sexe"]=="M",],pch=19,col=2,ylim=c(40,60))
+abline(modeleG$coefficients,col=2)
+points(TailleBB ~ Nbsem,data=bebe[bebe[,"Sexe"]=="F",],pch=7,col=4)
+abline(modeleF$coefficients,col=4)
+
+#Q5-6
+modeleCovariance <- lm(TailleBB ~ Sexe*Nbsem,data=bebe)
+summary(modeleCovariance)
+require(car)
+Anova(modeleCovariance,type="III")
+anova(modeleCovariance)
+
+options(contrasts=c("contr.treatment","contr.treatment"))
+modeleCovariance <- lm(TailleBB ~ Sexe*Nbsem,data=bebe)
+summary(modeleCovariance)
+
+
+
+#####
+## Exo 2
+#####
+
+eole <- read.table(paste(path,"eolienne.txt",sep=""),sep="\t",header=TRUE,dec=".",na.strings="")
+
+names(eole)
+
+eole <- eole[which((eole$VitMat60 > 5) & (eole$VitMat60 < 15)),]
+
+par(mfrow=c(1,2))
+plot(eole$Pmoy ~ eole$VitMat60,pch=".")
+plot(log(eole$Pmoy) ~ log(eole$VitMat60),pch=".")
+## Q2
+
+logP <- log(eole$Pmoy)
+logV <- log(eole$VitMat60)
+mod.eole <- lm(logP ~ logV)
+summary(mod.eole)
+anova(mod.eole)
+
+
+beta0hat <- mod.eole$coefficients[1]
+beta1hat <- mod.eole$coefficients[2]
+
+beta0 <- log(1.225)+log(3.14)+2*log(20)
+beta1 <- 3
+
+## Q3
+
+# Tester de conformite de beta1
+sdbeta1 <- summary(mod.eole)$coefficients[2,2]
+stat.beta1 <- (beta1-beta1hat)/sdbeta1
+pval.beta1 <- 2*pt(-abs(stat.beta1),df=nrow(eole)-2)
+
+sdbeta0 <- summary(mod.eole)$coefficients[1,2]
+stat.beta0 <- (beta0-beta0hat)/sdbeta0
+pval.beta0 <- 2*pt(-abs(stat.beta0),df=nrow(eole)-2)
+
+library(multcomp)
+xx <- rep(1,length(logV))
+lin.mod <- lm(logP ~ -1+xx+logV)
+summary(glht(lin.mod,linfct=c("xx=7.34","logV=3")))
+
+
+### Q4
+
+plot(eole$VitMat60,eole$Pmoy,col=as.integer(eole$SecMat))
+plot(logP ~ logV,col=0)
+
+compt <- 1
+for (i in levels(eole$SecMat)){
+	w <- which(eole$SecMat==i)
+	points(logP[w] ~ logV[w],col=compt,pch=".",cex=3)
+	mod.tmp <- lm(logP[w] ~ logV[w])
+	abline(mod.tmp$coefficients,col=compt,lwd=2)
+	compt <- compt+1
+	}
+
+modele.cov <- lm(logP ~ logV*eole$SecMat)
+anova(modele.cov)
+summary(modele.cov)
+beta0hat.cov <- modele.cov$coefficients[1]
+beta1hat.cov <- modele.cov$coefficients[2]
+
+sdbeta1.cov <- summary(modele.cov)$coefficients[2,2]
+stat.beta1.cov <- (beta1-beta1hat.cov)/sdbeta1.cov
+pval.beta1.cov <- 2*pt(-abs(stat.beta1.cov),df=summary(modele.cov)$df[2])
+
+sdbeta0.cov <- summary(modele.cov)$coefficients[1,2]
+stat.beta0.cov <- (beta0-beta0hat.cov)/sdbeta0.cov
+pval.beta0.cov <- 2*pt(-abs(stat.beta0.cov),df=summary(modele.cov)$df[2])
+
+
+```
+

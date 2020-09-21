@@ -1,0 +1,100 @@
+---
+title: "TD AFM"
+output: html_document
+editor_options: 
+  chunk_output_type: console
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+#Exercice page 2 - Analyse des cancers
+
+#Settings
+
+```{r}
+
+library(FactoMineR)
+library(Factoshiny)
+
+```
+
+#1-
+
+```{r}
+
+#load data
+comp <- read.table("http://factominer.free.fr/more/gene.csv",sep=";",header=T,row.names=1, encoding = "latin1")
+
+```
+
+#exploratory
+
+```{r}
+
+dim(comp)
+str(comp)
+summary(comp)
+head(comp)
+
+#diff between genome and transcriptome ?
+comp
+
+```
+
+
+
+
+```{r}
+#shiny wewe
+MFAshiny(comp)
+
+# a l ancienne
+
+res.MFA<-MFA(comp,group=c(356,68,1),type=c('s','s','n'),name.group=c("Genome","CGH","Type"),num.group.sup=c(3),graph=FALSE)
+
+plot.MFA(res.MFA, choix="ind",lab.par=FALSE,title="Graphe des individus")
+plot.MFA(res.MFA, choix="var",habillage='group',title="Cercle des corrélations")
+plot.MFA(res.MFA, choix="group",title="Graphe des groupes")
+plot.MFA(res.MFA, choix="axes",title="Graphe des axes partiels",habillage='group')
+```
+
+#2-
+
+On regarde les Lg pour avoir le groupe le plus multidimensionnel et là on voit que CGH est plus multidimensionnel.
+
+Ensuite on regarde les RV et le graphes de l'AFM est très proche de la configuration des groupes genome et CGH. On retrouve cette info sur le graphe des axes partiels les 2 dimensions sont presques "superposées" aux vraies dimensions 1 et 2 (même angle de rotation pour les 2 groupes).
+
+On retrouve sur le graphe des groupes que les 2 groupes sont très bien représentés sur la 1ere dimension tandis que CGH est mieux représenté sur la 2eme, logique c'est ce qu'on avait vu dans les Lg plus haut.
+
+#3,4,5,6
+
+On analyse plus en détail 
+-> graphs des variables :
+-genome plus liés à la 1ere mais un peu 2eme
+-CGH liés aussi beaucoup a 1ere mais pas mal a 2eme aussi
+C'est tout ce qu'on peux dire, sauf si on connait les gènes.
+
+-> graphs des individus : avec celui des modalités seuls
+On habille par variable quali pour voir les types de tumeurs.
+Les types de tumeurs on distingue celui très avancé (GBM) comparé aux autre moin avancé.
+Sur la 1ere dim on voit les différences entre CGh et genome
+Sur la 2eme dim on voit les diffs bien pour Genome où ça se différencie plus (regardons les points partiels qui sont bien espacés contrairement au vert).
+
+=> on différencie les types de tumeurs grâce aux données de CGH pour O,OA et A et on voit beaucoup plus nettement sur la 2eme dim, et avec les données de Genome on les voit nettement sur la 1ere.
+
+-> graphs des individus : avec celui des individus 
+On voit que aussi pour CGH on a une bonne discrimination sur la 2eme dimension.
+
+#7-
+Cf le graphs dans le TD à interpréter.
+
+On voit les fonctions biologiques qui sont impactés par le type de cancer et on voit celles qui sont liées au genome. Ici pour la 1ere dimension ça discrimine bien les types de tumeurs du stade moins avancé au plus avancé. La 2eme dimension pourra bien discriminer plus finement comme O et OA.
+
+#Session
+
+```{r}
+sessionInfo()
+```
+
